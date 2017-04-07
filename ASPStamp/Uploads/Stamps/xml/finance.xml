@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Stamp>
+  <StampImageURL>finance.jpg</StampImageURL>
+  <BackgroundImageURL>finance.jpg</BackgroundImageURL>
+  <Width>560</Width>
+  <Height>240</Height>
+  <Title>123</Title>
+  <TitleFontName>"Helvetica Neue", Helvetica, Arial, sans-serif</TitleFontName>
+  <TitleFontSize>18</TitleFontSize>
+  <TitleX>269.912</TitleX>
+  <TitleY>61.0515</TitleY>
+  <TitleWidth>30</TitleWidth>
+  <TitleHeight>25</TitleHeight>
+  <Description>qwe</Description>
+  <DescriptionFontName>"Helvetica Neue", Helvetica, Arial, sans-serif</DescriptionFontName>
+  <DescriptionFontSize>14</DescriptionFontSize>
+  <DescriptionX>270.154</DescriptionX>
+  <DescriptionY>152.114</DescriptionY>
+  <DescriptionWidth>26</DescriptionWidth>
+  <DescriptionHeight>20</DescriptionHeight>
+  <BackgroundColor>none</BackgroundColor>
+  <ForegroundColor>rgb(23, 60, 255)</ForegroundColor>
+  <BorderColor>rgb(60, 56, 255)</BorderColor>
+</Stamp>

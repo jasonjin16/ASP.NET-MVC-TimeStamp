@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Stamp>
+  <StampImageURL>20170320061421597.JPG</StampImageURL>
+  <BackgroundImageURL>none</BackgroundImageURL>
+  <Width>560</Width>
+  <Height>240</Height>
+  <Title>sdf&lt;br&gt;sdf</Title>
+  <TitleFontName>"Helvetica Neue", Helvetica, Arial, sans-serif</TitleFontName>
+  <TitleFontSize>18</TitleFontSize>
+  <TitleX>273</TitleX>
+  <TitleY>62.5</TitleY>
+  <TitleWidth>24</TitleWidth>
+  <TitleHeight>50</TitleHeight>
+  <Description>123&lt;br&gt;qwe</Description>
+  <DescriptionFontName>"Helvetica Neue", Helvetica, Arial, sans-serif</DescriptionFontName>
+  <DescriptionFontSize>14</DescriptionFontSize>
+  <DescriptionX>272</DescriptionX>
+  <DescriptionY>125</DescriptionY>
+  <DescriptionWidth>26</DescriptionWidth>
+  <DescriptionHeight>40</DescriptionHeight>
+  <BackgroundColor>rgb(91, 48, 255)</BackgroundColor>
+  <ForegroundColor>rgb(112, 255, 237)</ForegroundColor>
+  <BorderColor>rgb(255, 102, 102)</BorderColor>
+</Stamp>

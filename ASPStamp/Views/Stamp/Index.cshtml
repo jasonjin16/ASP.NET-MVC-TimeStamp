@@ -1,0 +1,628 @@
+﻿@model InvoiceStamp.Models.Stamp
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2></h2>
+
+<div></div>
+<div class="container">
+    <div class="row">
+        <!--stamp detail-->
+        <div id="left-panel" class="col-sm-6">
+            <!--stamp preview div-->
+            <div id="stamp-preview-div" class="row">
+                <span id="title-span" style="font-size:18px; position:absolute; float:left; display:none; padding:5px"></span>
+                <span id="description-span" style="font-size:14px; position:absolute; float:left; display:none; padding:5px"></span>
+                <img id="stamp-preview-img" style="width:100%; min-height:250px " class="img-thumbnail" />
+            </div><br />
+            <!-- style div-->
+            <div class="row">
+                <div class="col-sm-2" style="width:34%;text-align: center;">
+                    <button id="bg-color-btn" class="jscolor {valueElement:'chosen-value', onFineChange:'setTextColor(this, 1)'} btn" style="background-color:#FFF">
+                        BackColor
+                    </button>
+                </div>
+                <div class="col-sm-2" style="width:33%;text-align: center;">
+                    <button id="fg-color-btn" class="jscolor {valueElement:'chosen-value', onFineChange:'setTextColor(this, 2)'} btn" style="background-color:#000">
+                        ForeColor
+                    </button>
+                </div>
+                <div class="col-sm-2" style="width:33%;text-align: center;">
+                    <button id="border-color-btn" class="jscolor {valueElement:'chosen-value', onFineChange:'setTextColor(this, 3)'} btn" style="background-color:#DDDDDD">
+                        BorderColor
+                    </button>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- stamp background -->
+                <form id="stamp-bg-upload-form" method="post" enctype="multipart/form-data">
+                    <div class="checkbox">
+                        <label><input onclick="javascript:getLeftPanelHeight()" id="bg-check" type="checkbox" value="" data-toggle="collapse" data-target="#stamp-bg-div" />Background</label>
+                    </div>
+                    <div id="stamp-bg-div" class="collapse">
+                        <input name="file" id="file" type="file" accept="image/*" />
+                        <img id="preload-img" class="invisible" src="~/Images/preloading.gif" style="float: left; position: absolute; margin-top: -21px; margin-left: 300px;" />
+                    </div>
+                </form>
+
+                <!-- stamp title -->
+                <div class="checkbox">
+                    <label><input onclick="javascript:getLeftPanelHeight()" id="title-check"  type="checkbox" value="" data-toggle="collapse" data-target="#stamp-title-div" />Title</label>
+                </div>
+                <div id="stamp-title-div" class="collapse ">
+                    <textarea id="stamp-title" class="form-control" placeholder="Title" rows="3" style="max-width:100%"></textarea>
+                </div>
+                <!-- stamp description -->
+                <div class="checkbox">
+                    <label><input onclick="javascript:getLeftPanelHeight()" id="description-check" type="checkbox" value="" data-toggle="collapse" data-target="#stamp-description-div" />Description</label>
+                </div>
+                <div id="stamp-description-div" class="collapse ">
+                    <textarea id="stamp-description" class="form-control" placeholder="Description" rows="5" style="max-width:100%"></textarea>
+                </div>
+            </div><br />
+
+            <!-- save button -->
+            <div id="save-row" class="row" style="text-align:center">
+                <div class="col-sm-3" style="text-align:center; width:50%">
+                    <button id="save-stamp-btn" type="button" class="btn btn-info">
+                        <span class="glyphicon glyphicon-floppy-disk"></span> Save
+                    </button>
+                    <img id="saving-img" class="invisible" src="~/Images/preloading.gif" style="float: left; position: absolute; margin-top: 6px;" />
+                </div>                
+                <div class="col-sm-3" style="text-align:center; width:50%">
+                    <button id="new-stamp-btn" type="button" class="btn btn-info">
+                        <span class="glyphicon glyphicon-new-window"></span> New
+                    </button>
+                </div>
+            </div>
+            <!-- stamp update -->
+            <div id="update-row" class="row invisible" style="text-align:center">
+                <div class="col-sm-2" style="text-align:center; width:33%">
+                    <button id="update-stamp-btn" type="button" class="btn btn-info">
+                        <span class="glyphicon glyphicon-edit"></span> Update
+                    </button>
+                </div>
+                <div class="col-sm-2" style="text-align:center; width:33%">
+                    <button id="remove-stamp-btn" type="button" class="btn btn-info">
+                        <span class="glyphicon glyphicon-remove"></span> Delete
+                    </button>
+                </div>
+                <div class="col-sm-2" style="text-align:center; width:34%">
+                    <button id="cancel-stamp-btn" type="button" class="btn btn-info">
+                        <span class="glyphicon glyphicon-share"></span> Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!--stamp list-->
+        <div id="right-panel" class="col-sm-6">
+            <h4 id="list-header">Stamp List</h4>
+            <div id="stamp-list" class="list-group" style="overflow:auto">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="~/Scripts/jquery-1.10.2.min.js"></script>
+<script src="~/Scripts/jquery.form.js"></script>
+<script src="~/Scripts/jquery-ui.min.js"></script>
+<script src="~/Scripts/jscolor.js"></script>
+
+<script>
+    var stamp_list, stamp_sel_index;
+    var bg_wid, bg_hei, prev_img, prev_bgc, img_real_wid, img_real_hei, bg_flag = 0;
+
+    
+    $(document).ready(function () {
+        bg_wid = $("#stamp-preview-div").width();
+        bg_hei = $("#stamp-preview-div").height();
+        prev_img = $('#stamp-preview-img').attr("src");
+        
+        getLeftPanelHeight();
+        @{
+            var stamp_list = (List<string>)ViewData["stamps"];
+            string stamps = "";
+            if (stamp_list.Count>0) {
+                stamps = stamp_list[0];
+                for (int i = 1; i < stamp_list.Count; ++i) {
+                    stamps = stamps + "=" + stamp_list[i];
+                }
+            }
+        }
+        stamp_list = "@stamps";  
+        if (stamp_list.length > 0) {
+            stamp_list = stamp_list.split("=");            
+            if (stamp_list.length > 0) loadingStampList();
+        }        
+    });
+
+    $("#file").on('drop', function (e) {
+        $("#file").change();
+    });
+
+    function setTextColor(picker, cf) {
+        if (cf == 1) {
+            bg_flag = cf;
+            $("#stamp-preview-img").removeAttr("src");
+            //$("#stamp-preview-img").css("height", "300px");
+            $("#stamp-preview-img").css("background-color", '#' + picker.toString());
+        } else if (cf == 2) {
+            $("#title-span").css('color', '#' + picker.toString());
+            $("#description-span").css('color', '#' + picker.toString());
+        } else if (cf == 3) {
+            $("#stamp-preview-img").css('border-color', '#' + picker.toString());
+        }
+        //document.getElementsByTagName('body')[0].style.color = '#' + picker.toString()
+    }
+
+    $("#bg-check").change(function () {
+        if ($(this).is(':checked') == true) {
+            $("#bg-color-btn").addClass('disabled');
+            $("#stamp-preview-img").css("background-color", '#FFF');
+            if (prev_img!="none" && prev_img!="undefined") $('#stamp-preview-img').attr("src", prev_img);
+        } else if ($(this).is(':checked') == false) {
+            $("#bg-color-btn").removeClass('disabled');
+            $("#stamp-preview-img").css("background-color", $("#bg-color-btn").css("background-color"));
+            $('#stamp-preview-img').removeAttr("src");
+
+            bg_hei = 250;
+            addStampTitle($("#stamp-title").val());
+            addStampDescription($("#stamp-description").val());
+            /*
+            if (bg_flag == 1) {
+                $('#stamp-preview-img').attr("src", prev_img);
+            } else if (bg_flag == 0) {
+                $('#stamp-preview-img').attr("src", "../Images/no-image.png");
+            }
+            */
+        }
+    });
+
+    $("#file").change(function () {
+        if ($("#file").val().length <= 0) return;
+        $("#stamp-bg-upload-form").ajaxForm({
+            url: '/Stamp/Index',
+            beforeSend: function () {
+                $('#preload-img').removeClass('invisible');
+            },
+            uploadProgress: function (event, position, total, percentComplete) { },
+            error: function () {
+                alert("Image upload error");
+                //window.refresh();
+            },
+            success: function (xhr) {  },
+            complete: function (xhr) {
+                $('#preload-img').addClass('invisible');
+                if (!Array.isArray(xhr.responseJSON)) return;
+                var bg_url = xhr.responseJSON[0];
+                img_real_wid = xhr.responseJSON[1];
+                img_real_hei = xhr.responseJSON[2];
+                // update previe information
+                bg_hei = img_real_hei * bg_wid / img_real_wid;
+                //console.log(bg_wid + "-" + img_real_wid + "," + bg_hei + "-" + img_real_hei);
+                $("#stamp-preview-img").css("min-height", bg_hei);
+
+                addStampTitle($("#stamp-title").val());
+                addStampDescription($("#stamp-description").val());
+
+                $('#stamp-preview-img').attr("src", bg_url);
+                prev_img = $('#stamp-preview-img').attr("src");                
+
+                getLeftPanelHeight();
+            }
+        }).submit();
+    });
+
+    // title and description text keypress event
+    $("#stamp-title").keyup(function () {
+        if (this.value.length <= 0) return;
+        addStampTitle(this.value);
+    });
+
+    $("#stamp-description").keyup(function () {
+        if (this.value.length <= 0) return;
+        addStampDescription(this.value);
+    });
+    // // title and description add event
+    function addStampTitle(title_str) {
+        // add stamp title
+        var t_arr = title_str.split('\n');
+        var html_str = t_arr[0];
+        for (var i = 1; i < t_arr.length; ++i) if (t_arr[i].length > 0) html_str += "<br />" + t_arr[i];
+        $("#title-span").html(html_str);
+        $("#title-span").css("display", "block");
+        $("#title-span").css("margin-left", (bg_wid - $("#title-span").width()) / 2);
+        $("#title-span").css("margin-top", bg_hei / 4);
+    }
+
+    function addStampDescription(description_str) {
+        // add stamp description
+        var t_arr = description_str.split('\n');
+        var html_str = t_arr[0];
+        for (var i = 1; i < t_arr.length; ++i) if (t_arr[i].length > 0) html_str += "<br />" + t_arr[i];
+        $("#description-span").html(html_str);
+        $("#description-span").css("display", "block");
+        $("#description-span").css("margin-left", (bg_wid - $("#description-span").width()) / 2);
+        $("#description-span").css("margin-top", bg_hei / 2);
+    }
+    // title and description span mouse hover event
+    $("#title-span").hover(
+        function () {
+            $(this).css("cursor", "move");
+            $(this).css("border", "dashed 0.5px");
+            $(this).css("border-radius", "5px");
+        },
+        function () {
+            $(this).css("cursor", "default");
+            $(this).css("border", "none");
+        }
+    );
+
+    $("#description-span").hover(
+        function () {
+            $(this).css("cursor", "move");
+            $(this).css("border", "dashed 0.5px");
+            $(this).css("border-radius", "5px");
+        },
+        function () {
+            $(this).css("cursor", "default");
+            $(this).css("border", "none");
+        }
+    );
+    // title and descriptin span drag and drop event
+    $("#title-span").draggable({
+        revert: false,
+        drag: function (event, ui) {
+            var parentX, parentY, parentWid, parentHei;
+            parentX = $("#stamp-preview-img").offset().left;
+            parentY = $("#stamp-preview-img").offset().top;
+            parentWid = $("#stamp-preview-img").width();
+            parentHei = $("#stamp-preview-img").height();
+            if ((event.clientX - parentX <= 0 || event.clientY - parentY <= 0) || (event.clientX - parentX > parentWid || event.clientY - parentY > parentHei)) {
+                return false;
+            }
+        }
+    });
+
+    $("#description-span").draggable({
+        revert: false,
+        drag: function (event, ui) {            
+            var parentX, parentY, parentWid, parentHei;
+            parentX = $("#stamp-preview-img").offset().left;
+            parentY = $("#stamp-preview-img").offset().top;
+            parentWid = $("#stamp-preview-img").width();
+            parentHei = $("#stamp-preview-img").height();
+            if ((event.clientX - parentX <= 0 || event.clientY - parentY <= 0) || (event.clientX - parentX > parentWid || event.clientY - parentY > parentHei)) {
+                return false;
+            }
+        }
+    });
+
+    function getLeftPanelHeight() {
+        setTimeout(function () { $("#stamp-list").css("max-height", $("#left-panel").height()); }, 100);
+    }
+
+    $("#save-stamp-btn").click(function () {
+        var json_data = "{";
+        if ($("#bg-check").is(':checked') == true) { // background option is checked
+            json_data = json_data + "'bg_url': '" + $("#stamp-preview-img").attr("src") + "',";
+            json_data = json_data + "'bg_color': 'none',";
+        } else {
+            json_data = json_data + "'bg_url': 'none',";
+            json_data = json_data + "'bg_color': '" + $("#bg-color-btn").css("background-color") + "',";
+        }
+        // width and height
+        json_data = json_data + "'width':'" + $("#stamp-preview-img").width() + "',";
+        json_data = json_data + "'height':'" + $("#stamp-preview-img").height() + "',";
+        // title information
+        if ($("#title-check").is(':checked') == true) { // title option is checked
+            json_data = json_data + "'title': '" + $("#stamp-title").val().replace("\n","<br>") + "',";
+            json_data = json_data + "'title_fontName': '" + $("#title-span").css("font-family") + "',";
+            json_data = json_data + "'title_fontSize': '" + removePixelString($("#title-span").css("font-size")) + "',";
+            json_data = json_data + "'title_posX': '" + removePixelString($("#title-span").css("margin-left")) + "',";
+            json_data = json_data + "'title_posY': '" + removePixelString($("#title-span").css("margin-top")) + "',";
+            json_data = json_data + "'title_width': '" + $("#title-span").width() + "',";
+            json_data = json_data + "'title_height': '" + $("#title-span").height() + "',";
+        } else {
+            json_data = json_data + "'title': 'none',";
+            json_data = json_data + "'title_fontName': 'none',";
+            json_data = json_data + "'title_fontSize': '0',";
+            json_data = json_data + "'title_posX': '0',";
+            json_data = json_data + "'title_posY': '0',";
+            json_data = json_data + "'title_width': '0',";
+            json_data = json_data + "'title_height': '0',";
+        }
+        // description information
+        if ($("#description-check").is(':checked') == true) { // description option is checked
+            json_data = json_data + "'description': '" + $("#stamp-description").val().replace("\n", "<br>") + "',";
+            json_data = json_data + "'description_fontName': '" + $("#description-span").css("font-family") + "',";
+            json_data = json_data + "'description_fontSize': '" + removePixelString($("#description-span").css("font-size")) + "',";
+            json_data = json_data + "'description_posX': '" + removePixelString($("#description-span").css("margin-left")) + "',";
+            json_data = json_data + "'description_posY': '" + removePixelString($("#description-span").css("margin-top")) + "',";
+            json_data = json_data + "'description_width': '" + $("#description-span").width() + "',";
+            json_data = json_data + "'description_height': '" + $("#description-span").height() + "',";
+        } else {
+            json_data = json_data + "'description': 'none',";
+            json_data = json_data + "'description_fontName': 'none',";
+            json_data = json_data + "'description_fontSize': '0',";
+            json_data = json_data + "'description_posX': '0',";
+            json_data = json_data + "'description_posY': '0',";
+            json_data = json_data + "'description_width': '0',";
+            json_data = json_data + "'description_height': '0',";
+        }
+        // color information
+        json_data = json_data + "'fg_color': '" + $("#fg-color-btn").css("background-color") + "',";
+        json_data = json_data + "'border_color': '" + $("#border-color-btn").css("background-color");
+        json_data = json_data + "'}";
+
+        $.ajax({
+            type: 'POST',
+            url: "@Url.Action("Add","Stamp")",
+            data: json_data,
+            ajaxasync: true,
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            beforeSend: function () { $('#saving-img').removeClass('invisible'); },
+            uploadProgress: function (event, position, total, percentComplete) { },
+            error: function (e) { alert("Stamp Save Error"); },
+            success: function (xhr) {},
+            complete: function (xhr) {
+                $('#saving-img').addClass('invisible');
+                stamp_list = xhr.responseJSON;
+                clearStampEdit();
+                loadingStampList();                
+            }
+        });
+    });
+
+    function removePixelString(temp_val) {        
+        return temp_val.substring(0, temp_val.length - 2);
+    }
+
+    function loadingStampList() {
+
+        var img_list_html = '';
+        for (var i = 0; i < stamp_list.length; ++i) {
+            var stamp_data = stamp_list[i].split("|");
+            img_list_html += "<a href='javascript:selectStamp(" + i + ")' class='list-group-item'><img class='img-thumbnail' style='width:100%' src=" + stamp_data[1] + " /></a>";
+        }
+        $("#stamp-list").html(img_list_html);
+    }
+
+    function selectStamp(stamp_index) {        
+        stamp_sel_index = stamp_index;
+        //alert($("#stamp-list img:eq(" + stamp_index + ")").attr("src"));
+        $.ajax({
+            type: 'POST',
+            url: "@Url.Action("Edit","Stamp")",
+            data: "{'stamp_url':'" + $("#stamp-list img:eq(" + stamp_sel_index + ")").attr("src") + "'}",
+            ajaxasync: true,
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            beforeSend: function () { },
+            uploadProgress: function (event, position, total, percentComplete) { },
+            error: function (e) { alert('Stamp Select Fail'); },
+            success: function (xhr) {},
+            complete: function (xhr) {
+                $("#update-row").removeClass("invisible");
+                $("#save-row").addClass("invisible");                
+                loadingSelectedStampData(xhr.responseJSON);                
+            }
+        });
+    }
+
+    function loadingSelectedStampData(response) {        
+        if (response.length == 0) return; // no exists response some issue
+        $("#title-span").html("");
+        $("#stamp-title").val("");
+        $("#description-span").html("");
+        $("#stamp-description").val("");
+        var stamp_data = response.split("|");
+        prev_img = stamp_data[2];
+        if (stamp_data[2] != "none") {
+            $("#stamp-preview-img").attr("src", stamp_data[2]);
+            $("#stamp-preview-img").css("background-color", "#FFF");
+            $("#bg-color-btn").css("background-color", "#FFF");
+            if ($("#bg-check").is(":checked") == false) $("#bg-check").click();
+        } else {
+            $("#stamp-preview-img").removeAttr("src");
+            $("#stamp-preview-img").css("background-color", "#" + stamp_data[19]);
+            $("#bg-color-btn").css("background-color", "#" + stamp_data[19]);            
+            if ($("#bg-check").is(":checked") == true) $("#bg-check").click();
+        }
+        
+        //$("#stamp-preview-img").css("width", stamp_data[1] + "px");
+        //$("#stamp-preview-img").css("height", stamp_data[2] + "px");
+        //$("#stamp-preview-img").css("min-height", stamp_data[2] + "px");
+        
+        var ar = $("#stamp-preview-img").width() / stamp_data[3];
+        if (stamp_data[5] != "none" && stamp_data[6] != "none") {
+            // title           
+            $("#title-span").html(stamp_data[5]);
+            $("#title-span").css("font-family", stamp_data[6]);
+            $("#title-span").css("font-size", stamp_data[7] + "px");
+            $("#title-span").css("margin-left", stamp_data[8] * ar + "px");
+            $("#title-span").css("margin-top", stamp_data[9] * ar + "px");
+            //$("#title-span").width(stamp_data[10] * ar);
+            //$("#title-span").height(stamp_data[11] * ar);
+
+            $("#title-span").css("color", "#" + stamp_data[20]);
+            $("#title-span").css("display", "block");
+            $("#stamp-title").val(stamp_data[5].replace("<br>", "\n"));
+            if ($("#title-check").is(":checked") == false)  $("#title-check").click()
+        } else {
+            if ($("#title-check").is(":checked") == true) $("#title-check").click();
+        }
+        if (stamp_data[12] != "none" && stamp_data[13] != "none") {
+            // description            
+            $("#description-span").html(stamp_data[12]);
+            $("#description-span").css("font-family", stamp_data[13]);
+            $("#description-span").css("font-size", stamp_data[14] + "px");
+            $("#description-span").css("margin-left", stamp_data[15] * ar + "px");
+            $("#description-span").css("margin-top", stamp_data[16] * ar + "px");
+            //$("#description-span").width(stamp_data[17] * ar);
+            //$("#description-span").height(stamp_data[18] * ar);
+
+            $("#description-span").css("color", "#" + stamp_data[20]);
+            $("#description-span").css("display", "block");
+            
+            $("#stamp-description").val(stamp_data[12].replace("<br>", "\n"));
+
+            if ($("#description-check").is(":checked") == false) $("#description-check").click();
+        } else {
+            if ($("#description-check").is(":checked") == true) $("#description-check").click();
+        }
+        // color                
+        $("#fg-color-btn").css("background-color", "#" + stamp_data[20]);
+        $("#border-color-btn").css("background-color", "#" + stamp_data[21]);
+        $("#stamp-preview-img").css("border-color", $("#border-color-btn").css("background-color"));
+
+        $("#title-span").css("color", $("#fg-color-btn").css("background-color"));
+        $("#description-span").css("color", $("#fg-color-btn").css("background-color"));
+    }
+
+    // update stamp event
+    $("#update-stamp-btn").click(function () {
+        var json_data = "{";
+        if ($("#bg-check").is(':checked') == true) { // background option is checked
+            json_data = json_data + "'bg_url': '" + $("#stamp-preview-img").attr("src") + "',";
+            json_data = json_data + "'bg_color': 'none',";
+        } else {
+            json_data = json_data + "'bg_url': 'none',";
+            json_data = json_data + "'bg_color': '" + $("#bg-color-btn").css("background-color") + "',";
+        }
+        // width and height
+        json_data = json_data + "'width':'" + $("#stamp-preview-img").width() + "',";
+        json_data = json_data + "'height':'" + $("#stamp-preview-img").height() + "',";
+        // title information
+        if ($("#title-check").is(':checked') == true) { // title option is checked
+            json_data = json_data + "'title': '" + $("#stamp-title").val().replace("\n", "<br>") + "',";
+            json_data = json_data + "'title_fontName': '" + $("#title-span").css("font-family") + "',";
+            json_data = json_data + "'title_fontSize': '" + removePixelString($("#title-span").css("font-size")) + "',";
+            json_data = json_data + "'title_posX': '" + removePixelString($("#title-span").css("margin-left")) + "',";
+            json_data = json_data + "'title_posY': '" + removePixelString($("#title-span").css("margin-top")) + "',";
+            json_data = json_data + "'title_width': '" + $("#title-span").width() + "',";
+            json_data = json_data + "'title_height': '" + $("#title-span").height() + "',";
+        } else {
+            json_data = json_data + "'title': 'none',";
+            json_data = json_data + "'title_fontName': 'none',";
+            json_data = json_data + "'title_fontSize': '0',";
+            json_data = json_data + "'title_posX': '0',";
+            json_data = json_data + "'title_posY': '0',";
+            json_data = json_data + "'title_width': '0',";
+            json_data = json_data + "'title_height': '0',";
+        }
+        // description information
+        if ($("#description-check").is(':checked') == true) { // description option is checked
+            json_data = json_data + "'description': '" + $("#stamp-description").val().replace("\n", "<br>") + "',";
+            json_data = json_data + "'description_fontName': '" + $("#description-span").css("font-family") + "',";
+            json_data = json_data + "'description_fontSize': '" + removePixelString($("#description-span").css("font-size")) + "',";
+            json_data = json_data + "'description_posX': '" + removePixelString($("#description-span").css("margin-left")) + "',";
+            json_data = json_data + "'description_posY': '" + removePixelString($("#description-span").css("margin-top")) + "',";
+            json_data = json_data + "'description_width': '" + $("#description-span").width() + "',";
+            json_data = json_data + "'description_height': '" + $("#description-span").height() + "',";
+        } else {
+            json_data = json_data + "'description': 'none',";
+            json_data = json_data + "'description_fontName': 'none',";
+            json_data = json_data + "'description_fontSize': '0',";
+            json_data = json_data + "'description_posX': '0',";
+            json_data = json_data + "'description_posY': '0',";
+            json_data = json_data + "'description_width': '0',";
+            json_data = json_data + "'description_height': '0',";
+        }
+        // color information
+        json_data = json_data + "'fg_color': '" + $("#fg-color-btn").css("background-color") + "',";
+        json_data = json_data + "'border_color': '" + $("#border-color-btn").css("background-color");
+        json_data = json_data +"','stamp_url':'" + $("#stamp-list img:eq(" + stamp_sel_index + ")").attr("src") + "'}"        
+
+        $.ajax({
+            type: 'POST',
+            url: "@Url.Action("Update","Stamp")",
+            data: json_data,
+            ajaxasync: true,
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            beforeSend: function () { },
+            uploadProgress: function (event, position, total, percentComplete) { },
+            error: function (e) { alert('Stamp Update Fail'); },
+            success: function () {},
+            complete: function (xhr) {
+                $("#update-row").addClass("invisible");
+                $("#save-row").removeClass("invisible");
+                stamp_list = xhr.responseJSON;
+                clearStampEdit();
+                loadingStampList();                
+            }
+        });
+    });
+    // remove stamp event
+    $("#remove-stamp-btn").click(function () {
+        if (!confirm("Delete Stamp ?")) return;
+        $.ajax({
+            type: 'POST',
+            url: "@Url.Action("Delete","Stamp")",
+            data: "{'stamp_url':'" + $("#stamp-list img:eq(" + stamp_sel_index + ")").attr("src") + "'}",
+            ajaxasync: true,
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            beforeSend: function () { },
+            uploadProgress: function (event, position, total, percentComplete) { },
+            error: function (e) { alert('Stamp Delete Fail'); },
+            success: function () {},
+            complete: function (xhr) {
+                $("#update-row").addClass("invisible");
+                $("#save-row").removeClass("invisible");
+                stamp_list = xhr.responseJSON;     
+                clearStampEdit();
+                loadingStampList();                           
+            }
+        });
+    });
+    // cancel stamp event
+    $("#cancel-stamp-btn").click(function () {
+        $("#update-row").addClass("invisible");
+        $("#save-row").removeClass("invisible");
+        clearStampEdit();
+    });
+
+    // new stamp event
+    $("#new-stamp-btn").click(function () {
+        $("#update-row").addClass("invisible");
+        $("#save-row").removeClass("invisible");
+        clearStampEdit();
+    });
+
+    function clearStampEdit() {        
+        $("#stamp-preview-img").removeAttr("src");
+
+        if ($("#bg-check").is(":checked") == true) $("#bg-check").click();            
+        if ($("#title-check").is(":checked") == true) $("#title-check").click();
+        if ($("#description-check").is(":checked") == true) $("#description-check").click();
+       
+        $("#bg-color-btn").css("background-color", "#FFFFFF");
+        $("#fg-color-btn").css("background-color", "#000000");
+        $("#fg-color-btn").css("color", "#FFFFFF");
+        $("#border-color-btn").css("background-color", "#DDDDDD");
+        
+        $("#title-span").html("");
+        $("#stamp-title").val("");
+        $("#description-span").html("");
+        $("#stamp-description").val("");
+
+        $("#title-span").css("color", $("#fg-color-btn").css("background-color"));
+        $("#description-span").css("color", $("#fg-color-btn").css("background-color"));
+
+        $("#stamp-preview-img").css("background-color", $("#bg-color-btn").css("background-color"));
+        $("#stamp-preview-img").css("color", $("#fg-color-btn").css("background-color"));
+        $("#stamp-preview-img").css("border-color", $("#border-color-btn").css("background-color"));
+
+        prev_img = "";
+    }
+    setTimeout(function () {
+        $("#update-row").addClass("invisible");
+        $("#save-row").removeClass("invisible");
+        clearStampEdit();
+    }, 1);
+</script>

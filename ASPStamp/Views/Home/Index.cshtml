@@ -1,0 +1,324 @@
+﻿@{    
+    ViewBag.Title = "Index";
+}
+
+<div id="overlay-div" class="row invisible" style="z-index:15;opacity:0.5; position:absolute;" ></div>
+<div id="dialog" class="invisible" style="z-index:16" title="Basic dialog">
+    <p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the 'x' icon.</p>
+</div>
+<div id="main-div" class="container" style="margin-top:10px">
+    <div class="row">
+        <div class="col-sm-1"></div>
+        <div class="col-sm-10">
+            <div class="row">
+                <div class="col-sm-4" style="width:40%">
+                    <form id="invoice-upload-form" method="post" enctype="multipart/form-data">
+                        <input name="file" id="file" type="file" class="btn" accept="application/PDF" />
+                        <img id="preload-img" class="invisible" src="~/Images/preloading.gif" style="float: left; position: absolute; margin-top: -27px; margin-left: 300px;" />
+                    </form>
+                </div>     
+                <div id="title-div" class="col-sm-6 invisible" style="width:60%"><h4 id="invoice-title"></h4></div>   
+            </div>
+            <div id="option-row" class="row invisible" style="margin-bottom: 5px;">                
+                <div class="col-sm-4" style="width:40%">
+                    <button id="insert_template" type="button" class="btn btn-success"><span class="glyphicon glyphicon-link"></span> Insert</button>
+                    <button id="add_text" type="button" class="btn btn-success"><span class="glyphicon glyphicon-font"></span> Add Text</button>
+                    <button id="add_stamp" type="button" class="btn btn-success"><span class="glyphicon glyphicon-edit"></span> Add Stamp</button>                    
+                </div> 
+                <div class="col-sm-4" style="width:40%">
+                    <div class="input-group">
+                        <span class="input-group-addon"><i class="glyphicon glyphicon-check"></i></span>
+                        <input type='text' id='page_num' class="form-control" placeholder="Page No." />
+                    </div>
+                </div>
+                <div class="col-sm-1" style="width:10%">
+                    <button id="undo_btn" type="button" class="btn btn-warning disabled"><span class="glyphicon glyphicon-menu-left"></span> Undo</button>
+                </div>
+                <div class="col-sm-1" style="width:10%">
+                    <button id="save_invoice" type="button" class="btn btn-info disabled"><span class="glyphicon glyphicon-save"></span> Save</button>
+                </div>
+            </div>
+            <div id="invoice-content-div" class="row"></div>    
+        </div>    
+        <div class="col-sm-1"></div>
+    </div>    
+</div>
+
+<script src="~/Scripts/jquery-1.10.2.min.js"></script>
+<script src="~/Scripts/jquery.form.js"></script>   
+<script src="~/Scripts/jquery-ui.js"></script> 
+<script>
+    var page_ct=0, image_size, ar;
+    var stamp_list = [], template_list=[], stamp_ct;
+    var history_stack = [];
+
+    $("#file").on('dragover', function (e) {
+        //$("#file").css("border","dashed");
+    });
+
+    $("#file").on('dragleave', function (e) {
+        console.log("---");
+        //$("#file").css("border", "dashed");
+    });
+
+    $("#file").on('drop',function (e) {
+        $("#file").change();
+    });
+
+    $("#file").change(function () {
+        if ($("#file").val().length <= 0) return;
+        $('#invoice-table tr:gt(0)').remove();
+        $("#invoice-upload-form").ajaxForm({
+            url: '/Home/Index',
+            beforeSend: function () {
+                $('#preload-img').removeClass('invisible');
+                if (!$('#title-div').hasClass('invisible')) $('#title-div').addClass('invisible');
+            },
+            uploadProgress: function (event, position, total, percentComplete) { },
+            error: function () { alert("Invoice upload error"); },
+            success: function () { $('#invoice-table tr:gt(0)').remove(); },
+            complete: function (xhr) {                
+                $('#preload-img').addClass('invisible');
+                $('#title-div').removeClass('invisible');
+                $('#option-row').removeClass('invisible');
+                $('#invoice-title').html("Invoice Name : "+xhr.responseJSON[xhr.responseJSON.length - 1]);                
+                var html_content = "";                
+                for (var i = 0; i < xhr.responseJSON.length-1; ++i) {
+                    html_content += '<div class="page-div row"><img class="well" src=' + xhr.responseJSON[i] + ' style="width:100%;margin-bottom: 5px;" /></div>';
+                    ++page_ct;
+                }
+                $("#invoice-content-div").html(html_content);
+            }
+        }).submit();
+    });
+
+    $("#add_stamp").click(function () {
+        if (!$.isNumeric($("#page_num").val())) { alert("Please input integer"); $("#page_num").focus(); return; }// no numeric
+        if ($("#page_num").val() <= 0 || $("#page_num").val() > page_ct) { alert("Please input correct value"); $("#page_num").focus(); return; } // no integer
+        $("#overlay-div").removeClass('invisible');
+        $("#overlay-div").css("width", $("#main-div").width());
+        $("#overlay-div").css("height", $("#main-div").height());
+
+        $("#dialog").removeClass('invisible');
+        $("#dialog").dialog({
+            autoOpen: false,
+            resizable: false,
+            /*buttons: {
+                OK: function () {
+                    $(this).dialog("close");
+                }
+            },*/
+            close: function (event, ui) {
+                hideDialog();
+            },
+            width: 400
+        });
+        $(".ui-dialog-title").html("Choose stamp");
+        $(".ui-dialog-titlebar-close").css("border", "none");
+        $(".ui-dialog-titlebar-close").css("background-color", "#E9E9E9");
+        $(".ui-dialog-titlebar-close").html("<span class='glyphicon glyphicon-remove'></span>");
+        $("#dialog").dialog("open");        
+        $.ajax({
+            type: 'POST',
+            url: "@Url.Action("GetStampList","Home")",            
+            ajaxasync: true,
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            beforeSend: function () { },
+            uploadProgress: function (event, position, total, percentComplete) { },
+            error: function (e) { alert("Stamp Loading Error"); },
+            success: function (xhr) {},
+            complete: function (xhr) {                
+                var stamp_list = xhr.responseJSON;
+                var img_list_html = "";
+                
+                page_num = stamp_list.length;
+                for (var i = 0; i < stamp_list.length; ++i) {
+                    var stamp_data = stamp_list[i].split("|");
+                    img_list_html += "<a href='javascript:selectStamp(" + i + ")' class='list-group-item' style='border: none;'><img style='width:100%' src=" + stamp_data[1] + " /></a>";
+                }
+                $("#dialog").html(img_list_html);
+            }
+        });
+    });
+
+    $("#overlay-div").click(function () {
+        hideDialog();
+    });
+
+    function hideDialog(){
+        $("#overlay-div").addClass('invisible');
+        $("#dialog").dialog("close");
+    }
+
+    function selectStamp(stamp_id) {
+        var page_no= $("#page_num").val();
+        var stamp_url = $("#dialog a img:eq(" + stamp_id + ")").attr("src");
+        var invoice_url = $("#invoice-content-div .page-div:eq(" + (page_no - 1) + ") .well").attr("src");
+        
+        hideDialog();
+        $.ajax({
+            type: 'POST',
+            url: "@Url.Action("GetImageDimentsion", "Home")",     
+            data: "{'InvoiceImageURL':'" + invoice_url + "', 'StampImageURL':'" + stamp_url + "'}",
+            ajaxasync: true,
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            beforeSend: function () { },
+            uploadProgress: function (event, position, total, percentComplete) { },
+            error: function (e) { alert("Getting Image Size Error"); },
+            success: function (xhr) {},
+            complete: function (xhr) {
+                var invoice_wid = xhr.responseJSON.split("|")[0].split(",")[0];
+                var invoice_hei = xhr.responseJSON.split("|")[0].split(",")[1];
+                var stamp_wid = xhr.responseJSON.split("|")[1].split(",")[0];
+                var stamp_hei=xhr.responseJSON.split("|")[1].split(",")[1];
+                var cur_wid = $("#invoice-content-div .page-div:eq(" + (page_no - 1) + ") .well").width();
+                var cur_hei = $("#invoice-content-div .page-div:eq(" + (page_no - 1) + ") .well").height();
+                ar = cur_wid / invoice_wid;                
+                var stamp_img = "<div class='stamp-div' style='width:100%; position: absolute; margin-left:" + (cur_wid - stamp_wid * ar) / 2 + "px;margin-top:-" + (cur_hei + stamp_hei * ar) / 2 +"px'><img class='stamp-img' src='" + stamp_url + "' style='width:" + (stamp_wid * ar) + "px;' /></div>";
+                $("#invoice-content-div .page-div:eq(" + (page_no - 1) + ")").append(stamp_img);
+
+                var history_str = "2," + page_no + "," + $("#invoice-content-div .page-div:eq(" + (page_no - 1) + ") .stamp-div").length;// flag/page no/stamp no
+                history_stack.push(history_str);
+                if ($("#undo_btn").hasClass('disabled')) $("#undo_btn").removeClass('disabled');
+                if ($("#save_invoice").hasClass('disabled')) $("#save_invoice").removeClass('disabled');                
+            }
+        });
+    }
+
+    $("#insert_template").click(function () {
+        if (!$.isNumeric($("#page_num").val())) { alert("Please input integer"); $("#page_num").focus(); return; }// no numeric
+        if ($("#page_num").val() <= 0 || $("#page_num").val() > page_ct) { alert("Please input correct value"); $("#page_num").focus(); return; } // no integer
+
+        $("#overlay-div").removeClass('invisible');
+        $("#overlay-div").css("width", $("#main-div").width());
+        $("#overlay-div").css("height", $("#main-div").height());
+
+        $("#dialog").removeClass('invisible');
+        $("#dialog").dialog({
+            autoOpen: false,
+            resizable: false,
+            /*buttons: {
+                OK: function () {
+                    $(this).dialog("close");
+                }
+            },*/
+            close: function (event, ui) {
+                hideDialog();
+            },
+            width: 400
+        });
+        $(".ui-dialog-title").html("Choose form");
+        $(".ui-dialog-titlebar-close").css("border", "none");
+        $(".ui-dialog-titlebar-close").css("background-color", "#E9E9E9");
+        $(".ui-dialog-titlebar-close").html("<span class='glyphicon glyphicon-remove'></span>");
+        $("#dialog").dialog("open");
+        $.ajax({
+            type: 'POST',
+            url: "@Url.Action("GetTemplateList", "Home")",            
+            ajaxasync: true,
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            beforeSend: function () { },
+            uploadProgress: function (event, position, total, percentComplete) { },
+            error: function (e) { alert("Template Loading Error"); },
+            success: function (xhr) {},
+            complete: function (xhr) {                
+                var img_list_html = '';
+                template_list = xhr.responseJSON;
+                for (var i = 0; i < template_list.length; ++i) {
+                    var template_data = template_list[i].split(",");                    
+                    img_list_html += "<a href='javascript:selectTemplate(" + i + ")' class='list-group-item'><span style='width:100%'>" + template_data[0].split("/")[template_data[0].split("/").length-1] + "</span></a>";                    
+                }
+                $("#dialog").html(img_list_html);
+            }
+        });        
+    });
+
+    function selectTemplate(template_index) {        
+        hideDialog();
+        var page_no = $("#page_num").val();
+        var thumb_urls = template_list[template_index].split(",")[1].split("|");
+        var html_content = "";        
+        for (var i = 1; i < thumb_urls.length; ++i) {            
+            ++page_ct;
+            html_content += '<div class="page-div row"><img class="well" src=' + thumb_urls[i] + ' style="width:100%;margin-bottom: 5px;" /></div>';
+        }        
+        if (page_ct > page_no) {
+            $(html_content).insertBefore($("#invoice-content-div .page-div:eq(" + (page_no - 1) + ")"));
+        } else if (page_ct == page_no) {
+            $(html_content).appendTo($("#invoice-content-div"));
+        }
+        var history_str = "0," + page_no + "," + (thumb_urls.length-1);// flag/start page num/page range
+        history_stack.push(history_str);
+        if ($("#undo_btn").hasClass('disabled')) $("#undo_btn").removeClass('disabled');
+        if ($("#save_invoice").hasClass('disabled')) $("#save_invoice").removeClass('disabled');
+    }
+
+    $("#undo_btn").click(function () {
+        unDoing();
+    });
+
+    function unDoing() {
+        var undo_str = history_stack[history_stack.length - 1].split(",");
+        if(undo_str[0]==0){ // form template             
+            var ct=0;
+            while(ct++<undo_str[2]){
+                $("#invoice-content-div .page-div:eq(" + (undo_str[1] - 1) + ")").remove();
+                --page_ct;
+            }
+        } else if (undo_str[0] == 1) { // add text
+
+        } else if (undo_str[0] == 2) { // add stamp            
+            $("#invoice-content-div .page-div:eq(" + (undo_str[1] - 1) + ") .stamp-div:eq("+ (undo_str[2] - 1) + ")").remove();
+        }
+        history_stack.pop(); // eliminate last element
+        if (history_stack.length == 0) $("#undo_btn").addClass('disabled');
+        if ($("#save_invoice").hasClass('disabled')) $("#save_invoice").removeClass('disabled');
+        $("#overlay-div").css("width", $(".container").width());
+        $("#overlay-div").css("height", $(".container").height());
+    }
+
+    $("#save_invoice").click(function () {
+        if (!$("#save_invoice").hasClass('disabled')) {
+            saveInvoice();
+            $("#save_invoice").addClass('disabled');
+        }
+    });
+
+    function saveInvoice() {
+        var save_data = "{'SaveData':'";
+        var pn=0, sn = 0;
+        $("#invoice-content-div .page-div").each(function () {
+            save_data += "|"+$(this).find(".well").attr("src");
+            var stamp_data = "";
+            $("#invoice-content-div .page-div:eq(" + (pn++) + ") .stamp-div").each(function () {
+                stamp_data += "_";
+                stamp_data += $(this).children("img").attr("src");
+                stamp_data += "," + $(this).css("margin-left");
+                stamp_data += "," + $(this).css("margin-top");
+                stamp_data += "," + $(this).width();
+                stamp_data += "," + $(this).height();
+            });
+            save_data += "=" + stamp_data;
+        });
+        save_data += ";"+ar+"'}";
+        $.ajax({
+            type: 'POST',
+            url: "@Url.Action("SaveInvoice", "Home")",     
+            data: save_data,
+            ajaxasync: true,
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            beforeSend: function () { },
+            uploadProgress: function (event, position, total, percentComplete) { },
+            error: function (e) { alert("Invoice Save Error"); },
+            success: function (xhr) {},
+            complete: function (xhr) {
+                window.open(xhr.responseJSON);
+                $("#save_invoice").addClass('disabled');                
+            }
+        });
+    }
+</script>
